@@ -1,3 +1,5 @@
 # Requirements
 torch
 numpy
+torchaudio
+
