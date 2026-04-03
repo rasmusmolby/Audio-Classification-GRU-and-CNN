@@ -1,0 +1,32 @@
+
+# Just a QUICK config setupd
+
+data:
+  data_dir: "/home/rasmus/Desktop/Skole/github/semester4_project/gru_cnn_audio_class/data"           # One subclass per label
+  sample_rate: 16000
+  duration: 2.0                # Clip length in seconds (shorter = faster training)
+  random_seed: 42
+  label_map: {"disturbing": 0, "transient": 1, "stationary":2}
+
+mfcc:
+  n_mfcc: 39                   # How big feature vector is at each time frame
+  n_fft: 512
+  hop_length: 256
+  duration: 2.0                # 2 seconds as we agreed on
+
+
+training:
+  epochs: 50
+  batch_size: 16
+  learning_rate: 0.0003
+  weight_decay: 0.0001
+  lr_patience: 5               # for reduce on platue
+  lr_factor: 0.5
+  early_stop_patience: 15
+  num_workers: 4
+  device: "auto"               # auto or cpu
+  dags_user: "rasmusmolby"
+  dags_repo: ""
+
+output:
+  save_dir: "./outputs"

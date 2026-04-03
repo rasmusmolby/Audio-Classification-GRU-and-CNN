@@ -2,4 +2,11 @@
 torch
 numpy
 torchaudio
+pandas
+soundfile
+librosa
+pyyaml
 
+# For monitoring training
+mlflow
+dagshub

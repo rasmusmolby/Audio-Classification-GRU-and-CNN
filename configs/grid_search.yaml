@@ -1,0 +1,18 @@
+# Grid Search Config
+# Each key maps to a list of values to sweep.
+# Only override keys you want to search; base config fills the rest.
+# Warning: combinations multiply fast — keep grids small!
+
+grid:
+  training.learning_rate: [0.001, 0.0003]
+  training.batch_size: [16, 32]
+  model.rnn_hidden: [128, 256]
+  model.dropout: [0.3, 0.5]
+
+# Base config to inherit from
+base_config: "configs/default.yaml"
+
+# Optionally fix some params across all runs
+overrides:
+  training.epochs: 40          # Shorter runs during grid search
+  output.save_dir: "./outputs/grid_search"

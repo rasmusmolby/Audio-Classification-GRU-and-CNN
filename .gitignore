@@ -218,3 +218,13 @@ __marimo__/
 # Venv files
 .venv/
 
+
+# Data folder
+
+data/
+Data/
+
+
+# Mlflow
+mlflow.db
+mlruns/
