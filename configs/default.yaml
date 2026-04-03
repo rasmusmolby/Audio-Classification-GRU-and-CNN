@@ -2,9 +2,9 @@
 # Just a QUICK config setupd
 
 data:
-  data_dir: "/home/rasmus/Desktop/Skole/github/semester4_project/gru_cnn_audio_class/data"           # One subclass per label
+  data_dir: "../../Data/RTX_sorted" # Goes back 2 folders. For Ailab, change if local.
   sample_rate: 16000
-  duration: 2.0                # Clip length in seconds (shorter = faster training)
+  duration: 2.0                # 2 seconds like we agreed
   random_seed: 42
   label_map: {"disturbing": 0, "transient": 1, "stationary":2}
 
@@ -16,11 +16,11 @@ mfcc:
 
 
 training:
-  epochs: 50
+  epochs: 100
   batch_size: 16
-  learning_rate: 0.0003
+  learning_rate: 0.0002
   weight_decay: 0.0001
-  lr_patience: 5               # for reduce on platue
+  lr_patience: 5               # plaetuehhh lr reduction lmao eat my ass
   lr_factor: 0.5
   early_stop_patience: 15
   num_workers: 4
@@ -28,7 +28,7 @@ training:
 
   # for mlflow and dagshub
   repo_owner: "rasmusmolby"
-  repo_name: ""
+  repo_name: "Audio-Classification-GRU-and-CNN"
 
 output:
   save_dir: "./outputs"

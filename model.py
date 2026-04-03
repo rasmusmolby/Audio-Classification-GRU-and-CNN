@@ -4,8 +4,8 @@ import torch.nn as nn
 '''
 Paper dident specify activation functions in cnn block.
 
-Using MFCC converter with a 2:2 CNN and GRU.
-NO CUZ ENTROPYSigmoid at end for binary crossentropy classification with softmax. shit balls
+Using MFCC with a 2:2 CNN and GRU.
+No softmax cuz entropy so suck it
 
 
 
@@ -17,7 +17,8 @@ mfcc outputs x lenght feature vector at each timestep.
 
 '''
 
-# Returns weighted sum on each time frame
+# Returns weighted sum on each time frame.
+# Basically just self attention module lmao
 class TemporalAttention(nn.Module):
     def __init__(self, hidden_size):
         super().__init__()
@@ -29,14 +30,17 @@ class TemporalAttention(nn.Module):
         return (weights * x).sum(dim=1)
 
 
-
+# Model itself
+# 
+# Hardcoded so no config management.
+# TODO maybe add to config? idc
 class CNNGRU(nn.Module):
     def __init__(self, n_mfcc=39, c_cnn=32, n_classes = 3, gru_state=64):
         super().__init__()
         self.cnn1 = nn.Sequential(
             nn.Conv1d(n_mfcc, c_cnn, kernel_size=5, padding=2),
             nn.BatchNorm1d(c_cnn),
-            nn.LeakyReLU(),
+            nn.LeakyReLU(), # I dont know why the original did not use leakyrelu. So i am using it now cuz fuck the law
             nn.MaxPool1d(2, ceil_mode=True),
 
         )
@@ -53,7 +57,7 @@ class CNNGRU(nn.Module):
         self.fc1 = nn.Linear(in_features = gru_state, out_features = gru_state * 2)
         self.fc2 = nn.Linear(in_features=gru_state * 2, out_features= 3)
         self.dropout = nn.Dropout(p = 0.5)
-        self.softmax = nn.Softmax(dim = 1)
+        # self.softmax = nn.Softmax(dim = 1)
         self.lrelu = nn.LeakyReLU()
 
 

@@ -3,13 +3,15 @@ import torch.nn as nn
 import torchaudio as ta
 import numpy 
 import mlflow
+from pathlib import Path
+
 
 from model import TemporalAttention, CNNGRU
 import data_preprocessing as dp
 from config import load_config
 
 
-cfg = load_config(f"/home/rasmus/Desktop/Skole/github/semester4_project/gru_cnn_audio_class/configs/default.yaml")
+cfg = load_config(Path(__file__).parent / "configs" / "default.yaml")
 
 
 def cuda_train(preference = "auto"):
@@ -17,6 +19,9 @@ def cuda_train(preference = "auto"):
         if torch.cuda.is_available():
             print("Using Cuda")
             return torch.device("cuda")
+        else:
+            print("Using CPU")
+            return torch.device("cpu")
     elif preference == "cpu":
         print ("Using cpu")
         return torch.device("cpu")
@@ -34,7 +39,7 @@ def train(cfg):
     dc = cfg["data"]
 
     import dagshub
-    dagshub.init(repo_owner=tc["repo_owner"], repo_name=tc["repo_name"])
+    dagshub.init(repo_owner=tc["repo_owner"], repo_name=tc["repo_name"], mlflow= True)
 
     loss_setup = nn.CrossEntropyLoss()
     device = cuda_train(tc["device"])
@@ -42,6 +47,11 @@ def train(cfg):
     train_load, validation_load, shit = dp.get_dataloaders(root_dir = dc["data_dir"], cfg=cfg)
     model = CNNGRU().to(device)
     optimizer = torch.optim.Adam(params = model.parameters(), lr=tc["learning_rate"], weight_decay=tc["weight_decay"])
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer,
+        patience = tc["lr_patience"],
+        factor=tc["lr_factor"]
+    )
 
  
     # Training loop lmao
@@ -69,6 +79,7 @@ def train(cfg):
                     x, labels = x.to(device), labels.to(device)
                     output = model(x)
                     val_loss = loss_setup(output, labels)
+            scheduler.step(val_loss)
 
             # Mlflow stuff
             mlflow.log_metrics({
@@ -76,7 +87,8 @@ def train(cfg):
                 "val_loss": val_loss.item(),
             }, step = epoch)
             print(f"Epoch: {epoch+1}, loss: {loss.item():.4f}, validation loss: {val_loss.item():.4f}")
-        mlflow.pytorch.log_model(model, "model") # saves model
+        mlflow.pytorch.log_model(model, "model") # saves model to mlflow bucket
+        torch.save(model.state_dict(), "model.pth") # saves locally
 
 
 
