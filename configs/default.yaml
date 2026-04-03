@@ -25,8 +25,10 @@ training:
   early_stop_patience: 15
   num_workers: 4
   device: "auto"               # auto or cpu
-  dags_user: "rasmusmolby"
-  dags_repo: ""
+
+  # for mlflow and dagshub
+  repo_owner: "rasmusmolby"
+  repo_name: ""
 
 output:
   save_dir: "./outputs"

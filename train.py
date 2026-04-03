@@ -34,7 +34,7 @@ def train(cfg):
     dc = cfg["data"]
 
     import dagshub
-    dagshub.init(repo_owner=tc["dags_user"])
+    dagshub.init(repo_owner=tc["repo_owner"], repo_name=tc["repo_name"])
 
     loss_setup = nn.CrossEntropyLoss()
     device = cuda_train(tc["device"])
