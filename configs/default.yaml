@@ -1,8 +1,14 @@
 
 # Just a QUICK config setupd
+ailab:
+  ailab_location: False
+
+
+
 
 data:
-  data_dir: "../../Data/RTX_sorted" # Goes back 2 folders. For Ailab, change if local.
+  #data_dir: "../../Data/RTX_sorted" # Goes back 2 folders. For Ailab, change if local.
+  data_dir: "/data" # for local
   sample_rate: 16000
   duration: 2.0                # 2 seconds like we agreed
   random_seed: 42
