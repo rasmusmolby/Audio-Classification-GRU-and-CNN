@@ -1,12 +1,13 @@
-# Requirements
+# Core
 torch
-numpy
 torchaudio
-pandas
+numpy
 soundfile
-librosa
-pyyaml
 
-# For monitoring training
+# Config
+hydra-core
+omegaconf
+
+# Tracking
 mlflow
 dagshub
