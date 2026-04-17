@@ -215,6 +215,10 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml*
 
+
+# AI stuff
+.claudeignore
+
 # Venv files
 .venv/
 
