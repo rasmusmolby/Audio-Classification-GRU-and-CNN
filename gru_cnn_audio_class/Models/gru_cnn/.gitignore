@@ -217,7 +217,7 @@ __marimo__/
 
 
 # AI stuff
-.claudeignore
+.claudeignore.*
 
 # Venv files
 .venv/
