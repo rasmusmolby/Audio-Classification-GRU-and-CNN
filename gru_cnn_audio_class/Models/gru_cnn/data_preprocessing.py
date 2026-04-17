@@ -1,8 +1,8 @@
 import torch
+from torch.utils.data import Dataset, DataLoader, random_split
 import torchaudio
 import torchaudio.transforms as T
 from pathlib import Path
-from torch.utils.data import Dataset, DataLoader, random_split
 import soundfile as sf
 import random
 
@@ -79,7 +79,7 @@ class NoiseDataset(Dataset):
 
         self.root = Path(root_dir)
         self.samples = []
-        MAX_FILES = 3500
+        MAX_FILES = dc.get("max_files_per_class", 3500)
         for class_name, label in dc["label_map"].items():
             class_dir = self.root / class_name
             wavs = list(class_dir.glob("*.wav")) + list(class_dir.glob("*.flac"))
@@ -100,7 +100,8 @@ class NoiseDataset(Dataset):
             mfcc = waveform_to_mfcc(waveform, self.mfcc_transform)
             mfcc = normalize(mfcc)
             return mfcc, label
-        except Exception:
+        except Exception as e:
+            print(f"Warning: failed to load {path}: {e}. Skipping.")
             return self.__getitem__((idx + 1) % len(self.samples))
         
 
@@ -124,7 +125,12 @@ def get_dataloaders(root_dir, cfg):
     return train_loader, val_loader, test_loader
 
 if __name__ == "__main__":
-    train_loader, val_loader, test_loader = get_dataloaders("SOUNDS")
+    import yaml
+    from pathlib import Path
+    cfg_path = Path(__file__).parent / "configs" / "default.yaml"
+    with open(cfg_path) as f:
+        cfg = yaml.safe_load(f)
+    train_loader, val_loader, test_loader = get_dataloaders(cfg["data"]["data_dir"], cfg=cfg)
     specs, labels = next(iter(train_loader))
-    print(f"Batch shape: {specs.shape}")   
+    print(f"Batch shape: {specs.shape}")
     print(f"Labels: {labels}")
