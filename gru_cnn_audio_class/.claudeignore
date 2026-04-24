@@ -1,4 +1,0 @@
-data/
-.venv/
-*.pdf
-mlflow.db
