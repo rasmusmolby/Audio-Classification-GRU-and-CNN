@@ -7,6 +7,7 @@ import hydra
 
 from model import CNNGRU
 import data_preprocessing as dp
+from checkpoint import save_checkpoint, load_checkpoint
 
 
 def get_device(preference="auto"):
@@ -62,6 +63,20 @@ def train(cfg: DictConfig):
         factor=tc["lr_factor"],
     )
 
+
+    save_dir = Path(oc["save_dir"])
+    save_dir.mkdir(parents=True, exist_ok=True)
+    best_ckpt = save_dir / "best.pt"
+    latest_ckpt = save_dir / "latest.pt"
+
+    # Resume from latest checkpoint if it exists
+    start_epoch = 0
+    best_val_loss = float("inf")
+    if latest_ckpt.exists():
+        start_epoch, best_val_loss = load_checkpoint(latest_ckpt, model, optimizer, scheduler, device)
+        start_epoch += 1  # resume from next epoch
+        print(f"Resumed from checkpoint (epoch {start_epoch}, best_val_loss {best_val_loss:.4f})")
+
     with mlflow.start_run():
         mlflow.log_params({
             "epochs": tc["epochs"],
@@ -71,7 +86,7 @@ def train(cfg: DictConfig):
             "random_seed": dc["random_seed"],
         })
 
-        for epoch in range(tc["epochs"]):
+        for epoch in range(start_epoch, tc["epochs"]):
             # Train
             model.train()
             train_loss = 0.0
@@ -110,12 +125,14 @@ def train(cfg: DictConfig):
             }, step=epoch)
             print(f"Epoch {epoch+1:03d}  train_loss {train_loss:.4f}  val_loss {val_loss:.4f}  val_acc: {val_acc:.4f}")
 
-        mlflow.pytorch.log_model(model, "model")
+            save_checkpoint(latest_ckpt, epoch, model, optimizer, scheduler, best_val_loss)
+            if val_loss < best_val_loss:
+                best_val_loss = val_loss
+                save_checkpoint(best_ckpt, epoch, model, optimizer, scheduler, best_val_loss)
+                print(f"  -> New best model saved (val_loss {best_val_loss:.4f})")
 
-        save_dir = Path(oc["save_dir"])
-        save_dir.mkdir(parents=True, exist_ok=True)
-        torch.save(model.state_dict(), save_dir / "model.pth")
-        print(f"Model saved to {save_dir / 'model.pth'}")
+        mlflow.pytorch.log_model(model, "model")
+        print(f"Best model saved to {best_ckpt}")
 
 
 if __name__ == "__main__":
