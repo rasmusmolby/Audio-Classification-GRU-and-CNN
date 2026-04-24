@@ -1,7 +1,11 @@
+# System dependency: sudo apt install ffmpeg
+
+
 # Core
 torch
 torchaudio
 numpy
+librosa
 soundfile
 
 # Config

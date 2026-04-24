@@ -1,23 +1,23 @@
 data:
-  data_dir: "./data"
+  data_dir: ./data
   sample_rate: 16000
   duration: 2.0
   random_seed: 42
   max_files_per_class: 3400
-  label_map: {"disturbing": 0, "transient": 1, "stationary": 2}
-
+  label_map:
+    disturbing: 0
+    transient: 1
+    stationary: 2
 mfcc:
   n_mfcc: 39
   n_fft: 512
   hop_length: 256
   duration: 2.0
-
-model: # Not used atm but if need experimenting with layers, should setup.
+model:
   n_mfcc: 39
   c_cnn: 32
   n_classes: 3
   gru_state: 64
-
 training:
   epochs: 100
   batch_size: 16
@@ -27,10 +27,9 @@ training:
   lr_factor: 0.5
   early_stop_patience: 15
   num_workers: 4
-  device: "auto"               # auto or cpu
-  remote_tracking: true       # dagsbo bitches
-  repo_owner: "rasmusmolby"
-  repo_name: "Audio-Classification-GRU-and-CNN"
-
+  device: auto
+  remote_tracking: true
+  repo_owner: rasmusmolby
+  repo_name: Audio-Classification-GRU-and-CNN
 output:
-  save_dir: "./outputs"
+  save_dir: ./outputs

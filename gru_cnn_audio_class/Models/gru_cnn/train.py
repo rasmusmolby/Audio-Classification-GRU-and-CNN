@@ -33,8 +33,11 @@ def train(cfg: DictConfig):
     # Reproducibility
     torch.manual_seed(dc["random_seed"])
 
-    import dagshub
-    dagshub.init(repo_owner=tc["repo_owner"], repo_name=tc["repo_name"], mlflow=True)
+    if tc.get("remote_tracking", False):
+        import dagshub
+        dagshub.init(repo_owner=tc["repo_owner"], repo_name=tc["repo_name"], mlflow=True)
+        print("Remote tracking enabled (DagsHub)")
+        print("Local tracking only (set training.remote_tracking=true to push to DagsHub)")
 
     device = get_device(tc["device"])
     loss_fn = nn.CrossEntropyLoss()

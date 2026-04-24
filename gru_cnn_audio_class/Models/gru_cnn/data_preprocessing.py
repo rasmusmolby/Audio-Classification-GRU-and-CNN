@@ -1,26 +1,24 @@
 import torch
 from torch.utils.data import Dataset, DataLoader, random_split
-import torchaudio
 import torchaudio.transforms as T
 from pathlib import Path
-import soundfile as sf
+import subprocess
+import numpy as np
 import random
 
 
 def load_and_resample(path, cfg):
-# Load and resample  to target sample rate. Returns mono waveform
-    waveform, sr = sf.read(path, dtype="float32", always_2d=True)
-    waveform = torch.from_numpy(waveform).transpose(0, 1)	
-
-    dc = cfg["data"]
-
-    if waveform.shape[0] > 1:
-        waveform = waveform.mean(dim=0, keepdim=True)
-
-    if sr  != dc["sample_rate"]:
-        waveform = T.Resample(orig_freq=sr, new_freq=dc["sample_rate"])(waveform)
-
-    return waveform # new shape is (1, samples)
+    target_sr = cfg["data"]["sample_rate"]
+    result = subprocess.run(
+        ["ffmpeg", "-v", "quiet", "-i", str(path),
+         "-f", "f32le", "-acodec", "pcm_f32le",
+         "-ar", str(target_sr), "-ac", "1", "pipe:1"],
+        capture_output=True,
+    )
+    if result.returncode != 0 or len(result.stdout) == 0:
+        raise RuntimeError(f"ffmpeg failed on {path}: {result.stderr.decode().strip()}")
+    audio = np.frombuffer(result.stdout, dtype=np.float32)
+    return torch.from_numpy(audio.copy()).unsqueeze(0)  # shape: (1, samples)
 
 def pad_or_trim(waveform, cfg):
     dc = cfg["data"]
@@ -92,6 +90,8 @@ class NoiseDataset(Dataset):
     def __len__(self):
         return len(self.samples)
     
+
+
     def __getitem__(self, idx):
         path, label = self.samples[idx]
         try:
@@ -101,10 +101,10 @@ class NoiseDataset(Dataset):
             mfcc = normalize(mfcc)
             return mfcc, label
         except Exception as e:
-            print(f"Warning: failed to load {path}: {e}. Skipping.")
+            self._skip_count = getattr(self, "_skip_count", 0) + 1
+            # Print EVERY failure
+            print(f"[dataset] SKIP #{self._skip_count} | {path} | {type(e).__name__}: {e}")
             return self.__getitem__((idx + 1) % len(self.samples))
-        
-
 
 def get_dataloaders(root_dir, cfg):
     tc = cfg["training"]
