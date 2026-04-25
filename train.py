@@ -119,6 +119,9 @@ def train(cfg: DictConfig):
             val_loss /= len(val_load)
             val_acc = correct / total
 
+            # LR tracker for mlflow
+            current_lr = optimizer.param_groups[0]['lr']
+            mlflow.log_metric("learning_rate", current_lr, step=epoch)
             scheduler.step(val_loss)
 
             mlflow.log_metrics({
@@ -126,7 +129,7 @@ def train(cfg: DictConfig):
                 "val_loss": val_loss,
                 "val_acc": val_acc,
             }, step=epoch)
-            print(f"Epoch {epoch+1:03d}  train_loss {train_loss:.4f}  val_loss {val_loss:.4f}  val_acc: {val_acc:.4f}")
+            print(f"Epoch {epoch+1:03d}  train_loss {train_loss:.4f}  val_loss {val_loss:.4f}  val_acc: {val_acc:.4f}  ")
 
             save_checkpoint(latest_ckpt, epoch, model, optimizer, scheduler, best_val_loss)
             if val_loss < best_val_loss:
