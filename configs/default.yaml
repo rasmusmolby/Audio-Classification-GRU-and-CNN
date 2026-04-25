@@ -31,6 +31,7 @@ training:
   remote_tracking: true       # dagsbo bitches
   repo_owner: "rasmusmolby"
   repo_name: "Audio-Classification-GRU-and-CNN"
+  use_checkpoint: true
 
 output:
   save_dir: "./outputs"

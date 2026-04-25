@@ -227,7 +227,7 @@ __marimo__/
 
 data/
 Data/
-
+data.*
 
 # Mlflow
 mlflow.db
@@ -236,5 +236,5 @@ mlruns/
 
 # Notes and other misc
 
-notes.txt
+notes.*
 .pdf

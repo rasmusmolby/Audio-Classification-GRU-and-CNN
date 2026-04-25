@@ -41,7 +41,7 @@ def train(cfg: DictConfig):
         print("Local tracking only (set training.remote_tracking=true to push to DagsHub)")
 
     device = get_device(tc["device"])
-    loss_fn = nn.CrossEntropyLoss()
+    loss_fn = nn.CrossEntropyLoss() # Cross entropy
 
     train_load, val_load, _ = dp.get_dataloaders(root_dir=dc["data_dir"], cfg=cfg)
 
@@ -52,7 +52,7 @@ def train(cfg: DictConfig):
         gru_state=mc["gru_state"],
     ).to(device)
 
-    optimizer = torch.optim.Adam(
+    optimizer = torch.optim.AdamW(
         params=model.parameters(),
         lr=tc["learning_rate"],
         weight_decay=tc["weight_decay"],
@@ -72,10 +72,13 @@ def train(cfg: DictConfig):
     # Resume from latest checkpoint if it exists
     start_epoch = 0
     best_val_loss = float("inf")
-    if latest_ckpt.exists():
-        start_epoch, best_val_loss = load_checkpoint(latest_ckpt, model, optimizer, scheduler, device)
-        start_epoch += 1  # resume from next epoch
-        print(f"Resumed from checkpoint (epoch {start_epoch}, best_val_loss {best_val_loss:.4f})")
+    if tc["use_checkpoint"] == True:
+        if latest_ckpt.exists():
+            start_epoch, best_val_loss = load_checkpoint(latest_ckpt, model, optimizer, scheduler, device)
+            start_epoch += 1  # resume from next epoch
+            print(f"Resumed from checkpoint (epoch {start_epoch}, best_val_loss {best_val_loss:.4f})")
+        else:
+            print(f"Tried using checkpoint but no best found at: {save_dir}.")
 
     with mlflow.start_run():
         mlflow.log_params({
@@ -87,7 +90,7 @@ def train(cfg: DictConfig):
         })
 
         for epoch in range(start_epoch, tc["epochs"]):
-            # Train
+            # Train loop
             model.train()
             train_loss = 0.0
             for x, labels in train_load:
@@ -100,7 +103,7 @@ def train(cfg: DictConfig):
                 train_loss += loss.item()
             train_loss /= len(train_load)
 
-            # validation xd
+            # Validation loop
             model.eval()
             val_loss = 0.0
             correct = 0
@@ -129,7 +132,7 @@ def train(cfg: DictConfig):
             if val_loss < best_val_loss:
                 best_val_loss = val_loss
                 save_checkpoint(best_ckpt, epoch, model, optimizer, scheduler, best_val_loss)
-                print(f"  -> New best model saved (val_loss {best_val_loss:.4f})")
+                print(f" New best loss model saved (val_loss {best_val_loss:.4f})")
 
         mlflow.pytorch.log_model(model, "model")
         print(f"Best model saved to {best_ckpt}")
