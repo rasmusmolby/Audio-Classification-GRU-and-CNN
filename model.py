@@ -1,7 +1,12 @@
 import torch
 import torch.nn as nn
 
+
+
+
 '''
+run this module to sanity check sizes at each layer and module
+
 Paper dident specify activation functions in cnn block.
 
 Using MFCC with a 2:2 CNN and GRU.
@@ -32,10 +37,10 @@ class TemporalAttention(nn.Module):
 
 # Model itself
 # 
-# Hardcoded so no config management.
-# TODO maybe add to config? idc
+# DONE (kinda, still breaks but its in the default.yaml) Hardcoded so no config management.
+
 class CNNGRU(nn.Module):
-    def __init__(self, n_mfcc=39, c_cnn=32, n_classes = 3, gru_state=64):
+    def __init__(self, n_mfcc=39, c_cnn=32, n_classes=3, gru_state=64, dropout=0.5):
         super().__init__()
         self.cnn1 = nn.Sequential(
             nn.Conv1d(n_mfcc, c_cnn, kernel_size=5, padding=2),
@@ -56,7 +61,7 @@ class CNNGRU(nn.Module):
         self.gru2 = nn.GRU(input_size=gru_state, hidden_size=gru_state, batch_first=True) 
         self.fc1 = nn.Linear(in_features = gru_state, out_features = gru_state * 2)
         self.fc2 = nn.Linear(in_features=gru_state * 2, out_features= 3)
-        self.dropout = nn.Dropout(p = 0.5)
+        self.dropout = nn.Dropout(p=dropout)
         # self.softmax = nn.Softmax(dim = 1)
         self.lrelu = nn.LeakyReLU()
 
@@ -75,5 +80,39 @@ class CNNGRU(nn.Module):
         x = self.fc2(x)
         # x = self.softmax(x) # Cuz i use cross entropy
         return x
+
+
+if __name__ == "__main__":
+    # Sanity check — prints input/output shapes through every named module.
+    # Input: (batch=1, n_mfcc=39, time_frames=125)
+    # 125 frames = 2s audio at 16kHz with hop_length=256
+
+    model = CNNGRU()
+    model.eval()
+
+    hooks = []
+    print(f"\n{'Module':<30} {'Input shape':<30} {'Output shape'}")
+    print("-" * 80)
+
+    def make_hook(name):
+        def hook(_module, inp, out):
+            in_shape = str(tuple(inp[0].shape)) if isinstance(inp[0], torch.Tensor) else "n/a"
+            out_shape = str(tuple(out[0].shape)) if isinstance(out, tuple) else str(tuple(out.shape))
+            print(f"{name:<30} {in_shape:<30} {out_shape}")
+        return hook
+
+    for name, module in model.named_modules():
+        if name:
+            hooks.append(module.register_forward_hook(make_hook(name)))
+
+    x = torch.randn(1, 39, 125)
+    with torch.no_grad():
+        out = model(x)
+
+    for h in hooks:
+        h.remove()
+
+    print("-" * 80)
+    print(f"\nFinal output shape: {tuple(out.shape)}  (batch, n_classes)")
 
 
