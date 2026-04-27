@@ -5,9 +5,11 @@ from pathlib import Path
 from omegaconf import DictConfig, OmegaConf
 import hydra
 
+from scripts.early_stopping import EarlyStopping
+from scripts.checkpoint import save_checkpoint, load_checkpoint
+from quantization import get_amp, training_step
 from model import CNNGRU
 import data_preprocessing as dp
-from checkpoint import save_checkpoint, load_checkpoint
 
 
 def get_device(preference="auto"):
@@ -26,6 +28,7 @@ def train(cfg: DictConfig):
     # Convert to plain dict so data_preprocessing works unchanged
     cfg = OmegaConf.to_container(cfg, resolve=True)
 
+    # All configs under default.yaml
     tc = cfg["training"]
     dc = cfg["data"]
     mc = cfg["model"]
@@ -41,7 +44,7 @@ def train(cfg: DictConfig):
         print("Local tracking only (set training.remote_tracking=true to push to DagsHub)")
 
     device = get_device(tc["device"])
-    loss_fn = nn.CrossEntropyLoss() # Cross entropy
+    loss_fn = nn.CrossEntropyLoss(label_smoothing=tc["cross_entropy_label_smoothing"]) # Cross entropy
 
     train_load, val_load, _ = dp.get_dataloaders(root_dir=dc["data_dir"], cfg=cfg)
 
@@ -50,6 +53,7 @@ def train(cfg: DictConfig):
         c_cnn=mc["c_cnn"],
         n_classes=mc["n_classes"],
         gru_state=mc["gru_state"],
+        dropout=mc["dropout"],
     ).to(device)
 
     optimizer = torch.optim.AdamW(
@@ -64,14 +68,25 @@ def train(cfg: DictConfig):
     )
 
 
+    scaler, fp16 = get_amp(device, tc.get("fp16", False))
+
     save_dir = Path(oc["save_dir"])
     save_dir.mkdir(parents=True, exist_ok=True)
-    best_ckpt = save_dir / "best.pt"
-    latest_ckpt = save_dir / "latest.pt"
-
+    if tc["fp16"] == True:
+        print("Using FP16 quantization")
+        best_ckpt = save_dir / "best_fp16.pt"
+        latest_ckpt = save_dir / "latest_fp16.pt"
+    else:
+        print("Not using FP16 quantization")
+        best_ckpt = save_dir / "best.pt"
+        latest_ckpt = save_dir / "latest.pt"
+    
     # Resume from latest checkpoint if it exists
     start_epoch = 0
     best_val_loss = float("inf")
+    early_stopper = EarlyStopping(patience=tc["early_stop_patience"])
+    early_stopper.best = best_val_loss # sync for checkpointing
+    
     if tc["use_checkpoint"] == True:
         if latest_ckpt.exists():
             start_epoch, best_val_loss = load_checkpoint(latest_ckpt, model, optimizer, scheduler, device)
@@ -79,7 +94,6 @@ def train(cfg: DictConfig):
             print(f"Resumed from checkpoint (epoch {start_epoch}, best_val_loss {best_val_loss:.4f})")
         else:
             print(f"Tried using checkpoint but no best found at: {save_dir}.")
-
     with mlflow.start_run():
         mlflow.log_params({
             "epochs": tc["epochs"],
@@ -88,19 +102,15 @@ def train(cfg: DictConfig):
             "weight_decay": tc["weight_decay"],
             "random_seed": dc["random_seed"],
         })
+        mlflow.set_tag("FP16 Quant", tc["fp16"])
 
         for epoch in range(start_epoch, tc["epochs"]):
-            # Train loop
+            # Train loop 
             model.train()
             train_loss = 0.0
             for x, labels in train_load:
                 x, labels = x.to(device), labels.to(device)
-                optimizer.zero_grad()
-                output = model(x)
-                loss = loss_fn(output, labels)
-                loss.backward()
-                optimizer.step()
-                train_loss += loss.item()
+                train_loss += training_step(model, x, labels, loss_fn, optimizer, scaler, device, fp16)
             train_loss /= len(train_load)
 
             # Validation loop
@@ -119,8 +129,18 @@ def train(cfg: DictConfig):
             val_loss /= len(val_load)
             val_acc = correct / total
 
+
+            # Early stop check
+            if early_stopper.step(val_loss):
+                print(f"Early stopping at epoch {epoch+1}\n "
+                    f"No improvements for {tc["early_stop_patience"]} epochs")
+                mlflow.set_tag("early_stopped", f"epoch {epoch+1}")
+                break
+
+
             # LR tracker for mlflow
             current_lr = optimizer.param_groups[0]['lr']
+
             mlflow.log_metric("learning_rate", current_lr, step=epoch)
             scheduler.step(val_loss)
 
@@ -129,7 +149,7 @@ def train(cfg: DictConfig):
                 "val_loss": val_loss,
                 "val_acc": val_acc,
             }, step=epoch)
-            print(f"Epoch {epoch+1:03d}  train_loss {train_loss:.4f}  val_loss {val_loss:.4f}  val_acc: {val_acc:.4f}  ")
+            print(f"Epoch {epoch+1:03d}  train_loss {train_loss:.4f}  val_loss {val_loss:.4f}  val_acc: {val_acc:.4f}  current_lr: {current_lr:.6f}")
 
             save_checkpoint(latest_ckpt, epoch, model, optimizer, scheduler, best_val_loss)
             if val_loss < best_val_loss:
