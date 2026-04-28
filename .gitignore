@@ -228,7 +228,7 @@ __marimo__/
 data/
 Data/
 data.*
-
+data_cache
 # Mlflow
 mlflow.db
 mlruns/
