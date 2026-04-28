@@ -68,42 +68,54 @@ class NoiseDataset(Dataset):
         mc = cfg["mfcc"]
         self.cfg = cfg
 
-        self.mfcc_transform = T.MFCC(
-            sample_rate=dc["sample_rate"],
-            n_mfcc=mc["n_mfcc"],
-            melkwargs={"n_fft": mc["n_fft"], "hop_length": mc["hop_length"]},
-        )
+        cache_dir = Path(cfg["output"]["cache_dir"])
+        self.use_cache = cache_dir.exists() and any(cache_dir.rglob("*.npy"))
 
+        if self.use_cache:
+            print("Loading from preprocessed cache...")
+            self.samples = []
+            for class_name, label in dc["label_map"].items():
+                npy_files = sorted((cache_dir / class_name).glob("*.npy"))
+                for f in npy_files:
+                    self.samples.append((str(f), label))
+        else:
+            print("No cache found, loading raw audio (slow). Run preprocess.py first.")
+            self.mfcc_transform = T.MFCC(
+                sample_rate=dc["sample_rate"],
+                n_mfcc=mc["n_mfcc"],
+                melkwargs={"n_fft": mc["n_fft"], "hop_length": mc["hop_length"]},
+            )
+            self.samples = []
+            MAX_FILES = dc.get("max_files_per_class", 3500)
+            for class_name, label in dc["label_map"].items():
+                class_dir = Path(root_dir) / class_name
+                wavs = list(class_dir.glob("*.wav")) + list(class_dir.glob("*.flac"))
+                if len(wavs) > MAX_FILES:
+                    wavs = random.sample(wavs, MAX_FILES)
+                print(f"{class_name}: {len(wavs)} files")
+                for wav in wavs:
+                    self.samples.append((str(wav), label))
 
-        self.root = Path(root_dir)
-        self.samples = []
-        MAX_FILES = dc.get("max_files_per_class", 3500)
-        for class_name, label in dc["label_map"].items():
-            class_dir = self.root / class_name
-            wavs = list(class_dir.glob("*.wav")) + list(class_dir.glob("*.flac"))
-            if len(wavs) > MAX_FILES:
-                wavs = random.sample(wavs, MAX_FILES)
-            print(f"{class_name}: {len(wavs)} filer")
-            for wav in wavs:
-                self.samples.append((str(wav), label))
+        print(f"Dataset ready: {len(self.samples)} samples")
 
     def __len__(self):
         return len(self.samples)
-    
-
 
     def __getitem__(self, idx):
         path, label = self.samples[idx]
         try:
-            waveform = load_and_resample(path, self.cfg)
-            waveform = pad_or_trim(waveform, self.cfg)
-            mfcc = waveform_to_mfcc(waveform, self.mfcc_transform)
-            mfcc = normalize(mfcc)
+            if self.use_cache:
+                mfcc = torch.from_numpy(np.load(path))
+            else:
+                waveform = load_and_resample(path, self.cfg)
+                waveform = pad_or_trim(waveform, self.cfg)
+                mfcc = waveform_to_mfcc(waveform, self.mfcc_transform)
+                mfcc = normalize(mfcc)
             return mfcc, label
-        except Exception as e:
+        except Exception:
             self._skip_count = getattr(self, "_skip_count", 0) + 1
-            # Print EVERY failure
-            print(f"[dataset] SKIP #{self._skip_count} | {path} | {type(e).__name__}: {e}")
+            if self._skip_count % 50 == 0:
+                print(f"[dataset] {self._skip_count} files skipped so far (corrupt/unreadable)")
             return self.__getitem__((idx + 1) % len(self.samples))
 
 def get_dataloaders(root_dir, cfg):
@@ -114,8 +126,9 @@ def get_dataloaders(root_dir, cfg):
     n_val = int(n*0.15)
     n_test = int(n - n_train - n_val)
         
-    # Return three dataset splits:
-    train_set, val_set, test_set = random_split(dataset, [n_train, n_val, n_test])
+    # Return three dataset splits explicit generator so the split is always the same regardless of global random state
+    generator = torch.Generator().manual_seed(cfg["data"]["random_seed"])
+    train_set, val_set, test_set = random_split(dataset, [n_train, n_val, n_test], generator=generator)
 
     # Dataloaders:
     train_loader = DataLoader(train_set, tc["batch_size"], shuffle=True,  num_workers=tc["num_workers"])

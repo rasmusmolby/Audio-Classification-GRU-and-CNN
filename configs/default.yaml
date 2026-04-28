@@ -12,26 +12,30 @@ mfcc:
   hop_length: 256
   duration: 2.0
 
-model: # Not used atm but if need experimenting with layers, should setup.
-  n_mfcc: 39
+model: # Works but will break the model  if changed without thought, so be carefull ya dingus
+  n_mfcc: 39 
   c_cnn: 32
   n_classes: 3
   gru_state: 64
+  dropout: 0.5 # only one that is safe to change. Dropout at last layer
 
 training:
   epochs: 100 
   batch_size: 16
   learning_rate: 0.0002
-  weight_decay: 0.0001
-  lr_patience: 5
+  weight_decay: 0.01
+  lr_patience: 5  
   lr_factor: 0.5
   early_stop_patience: 15
   num_workers: 4
+  cross_entropy_label_smoothing: 0.1
   device: "auto"               # auto or cpu
   remote_tracking: true       # dagsbo bitches
   repo_owner: "rasmusmolby"
   repo_name: "Audio-Classification-GRU-and-CNN"
   use_checkpoint: true
+  fp16: false                 # mixed precision training
 
 output:
   save_dir: "./outputs"
+  cache_dir: "./data_cache"
