@@ -28,7 +28,7 @@ def train(cfg: DictConfig):
     # Convert to plain dict so data_preprocessing works unchanged
     cfg = OmegaConf.to_container(cfg, resolve=True)
 
-    # All configs under default.yaml
+    # All configs under default.yaml using hydra
     tc = cfg["training"]
     dc = cfg["data"]
     mc = cfg["model"]
