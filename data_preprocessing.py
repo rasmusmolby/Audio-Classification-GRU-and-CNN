@@ -126,7 +126,7 @@ def get_dataloaders(root_dir, cfg):
     n_val = int(n*0.15)
     n_test = int(n - n_train - n_val)
         
-    # Return three dataset splits explicit generator so the split is always the same regardless of global random state
+    # Return three dataset splits, explicit generator so the split is always the same regardless of global random state
     generator = torch.Generator().manual_seed(cfg["data"]["random_seed"])
     train_set, val_set, test_set = random_split(dataset, [n_train, n_val, n_test], generator=generator)
 
