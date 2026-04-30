@@ -1,4 +1,4 @@
-# System dependency: sudo apt install ffmpeg
+# If the script does not work, try this system dependency in your environment: sudo apt install ffmpeg
 
 
 # Core
