@@ -238,3 +238,25 @@ mlruns/
 
 notes.*
 .pdf
+
+
+# Everything else i guess
+data/
+datasets/
+checkpoints/
+runs/
+wandb/
+logs/
+outputs/
+
+*.pt
+*.pth
+*.ckpt
+*.h5
+*.onnx
+*.npy
+*.npz
+*.wav
+*.mp3
+*.flac
+
