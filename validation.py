@@ -1,6 +1,7 @@
 """
 
-THIS IS ALL CHAT
+IMPORTANT!!!! This is ALL 100% CHAT and is not really checked if works!!!
+Also, it is kinda broken, so dont actually use it in report!!!
 
 
 Validation script — compares all available saved models against the test set.
