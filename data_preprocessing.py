@@ -68,10 +68,11 @@ class NoiseDataset(Dataset):
         mc = cfg["mfcc"]
         self.cfg = cfg
 
+        # Cache checker
         cache_dir = Path(cfg["output"]["cache_dir"])
         self.use_cache = cache_dir.exists() and any(cache_dir.rglob("*.npy"))
 
-        if self.use_cache:
+        if self.use_cache and dc["use_cache"] == True:
             print("Loading from preprocessed cache...")
             self.samples = []
             for class_name, label in dc["label_map"].items():
@@ -79,7 +80,7 @@ class NoiseDataset(Dataset):
                 for f in npy_files:
                     self.samples.append((str(f), label))
         else:
-            print("No cache found, loading raw audio (slow). Run preprocess.py first.")
+            print("No cache found or cache disabled in default.yaml, loading raw audio (slow). Run preprocess.py first.")
             self.mfcc_transform = T.MFCC(
                 sample_rate=dc["sample_rate"],
                 n_mfcc=mc["n_mfcc"],
@@ -104,7 +105,7 @@ class NoiseDataset(Dataset):
     def __getitem__(self, idx):
         path, label = self.samples[idx]
         try:
-            if self.use_cache:
+            if self.use_cache and self.cfg["data"]["use_cache"] == True:
                 mfcc = torch.from_numpy(np.load(path))
             else:
                 waveform = load_and_resample(path, self.cfg)
@@ -136,14 +137,3 @@ def get_dataloaders(root_dir, cfg):
     test_loader  = DataLoader(test_set,  tc["batch_size"], shuffle=False, num_workers=tc["num_workers"])
 
     return train_loader, val_loader, test_loader
-
-if __name__ == "__main__":
-    import yaml
-    from pathlib import Path
-    cfg_path = Path(__file__).parent / "configs" / "default.yaml"
-    with open(cfg_path) as f:
-        cfg = yaml.safe_load(f)
-    train_loader, val_loader, test_loader = get_dataloaders(cfg["data"]["data_dir"], cfg=cfg)
-    specs, labels = next(iter(train_loader))
-    print(f"Batch shape: {specs.shape}")
-    print(f"Labels: {labels}")
