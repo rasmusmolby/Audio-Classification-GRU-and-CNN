@@ -8,7 +8,7 @@ import hydra
 from scripts.early_stopping import EarlyStopping
 from scripts.checkpoint import save_checkpoint, load_checkpoint
 from quantization import get_amp, training_step
-from model import CNNGRU
+from models.model import CNNGRU
 import data_preprocessing as dp
 
 
@@ -49,7 +49,7 @@ def train(cfg: DictConfig):
     train_load, val_load, _ = dp.get_dataloaders(root_dir=dc["data_dir"], cfg=cfg)
 
     model = CNNGRU(
-        n_mfcc=mc["n_mfcc"],
+        input=mc["input"],
         c_cnn=mc["c_cnn"],
         n_classes=mc["n_classes"],
         gru_state=mc["gru_state"],
@@ -109,6 +109,7 @@ def train(cfg: DictConfig):
             model.train()
             train_loss = 0.0
             for x, labels in train_load:
+                x = x.squeeze(1)  # Remove channel dim for 1dconv input. Patch for mel spec conversion
                 x, labels = x.to(device), labels.to(device)
                 train_loss += training_step(model, x, labels, loss_fn, optimizer, scaler, device, fp16)
             train_loss /= len(train_load)
@@ -120,6 +121,7 @@ def train(cfg: DictConfig):
             total = 0
             with torch.no_grad():
                 for x, labels in val_load:
+                    x = x.squeeze(1)  # Remove channel dim for 1dconv input. Patch for mel spec conversion
                     x, labels = x.to(device), labels.to(device)
                     output = model(x)
                     val_loss += loss_fn(output, labels).item()
