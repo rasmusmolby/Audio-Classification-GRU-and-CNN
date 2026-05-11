@@ -5,7 +5,7 @@ data:
   random_seed: 42
   max_files_per_class: 3400
   label_map: {"disturbing": 0, "transient": 1, "stationary": 2}
-  use_cache: true # Run cache_preprocess.py to make cache, else false. Speeds up training ALOT! Only for MFCC atm
+  use_cache: false # Run cache_preprocess.py to make cache, else false. Speeds up training ALOT! Only for MFCC atm
 
 mfcc:
   n_mfcc: 39
@@ -13,7 +13,7 @@ mfcc:
   hop_length: 256
   duration: 2.0
 
-model: # Works but will break the model  if changed without thought, so be carefull ya dingus
+model: # Works but will break the model if changed without thought, so be carefull ya dingus
   n_mfcc: 39 
   c_cnn: 32
   n_classes: 3

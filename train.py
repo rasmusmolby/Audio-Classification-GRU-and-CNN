@@ -9,7 +9,7 @@ from scripts.early_stopping import EarlyStopping
 from scripts.checkpoint import save_checkpoint, load_checkpoint
 from quantization import get_amp, training_step
 from model import CNNGRU
-import data_preprocessing as dp
+import data_preprocessing_cnn_gru as dp
 
 
 def get_device(preference="auto"):

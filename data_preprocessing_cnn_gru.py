@@ -6,6 +6,7 @@ import subprocess
 import numpy as np
 import random
 
+# NOTE PREPROCESSING USED IN CNN_GRU
 
 def load_and_resample(path, cfg):
     target_sr = cfg["data"]["sample_rate"]
@@ -23,15 +24,11 @@ def load_and_resample(path, cfg):
 def pad_or_trim(waveform, cfg):
     dc = cfg["data"]
     n_samples = int(dc["duration"] * dc["sample_rate"])
-
     n = waveform.shape[-1]
-
     if n < n_samples:
         waveform = torch.nn.functional.pad(waveform, (0, (n_samples - n)))
-
     else: 
         waveform = waveform[..., :n_samples]
-
     return waveform
 
 '''
@@ -49,17 +46,22 @@ mel_transform = T.MelSpectrogram(
 amplitude_to_db = T.AmplitudeToDB(stype="power", top_db=80)
 '''
 
+def augment_volume(waveform):
+    """Random volume jitter in [0.8, 1.2]. Applied during training only."""
+    gain = random.uniform(0.8, 1.2)
+    return waveform * gain
+
+
 # Does the actual transformation from waveform to mfcc
 def waveform_to_mfcc(waveform, mfcc_transform):
-    
-    return mfcc_transform(waveform).squeeze(0) # So shape is (39, Time)
+    return mfcc_transform(waveform).squeeze(0) # So shape is (n_mfcc, time) => (39, time)
 
 
 def normalize(spec):
     spec_mean = spec.mean()
     spec_std = spec.std()
-
     return ((spec - spec_mean)/(spec_std + 1e-8)) #1e-8 is added to avoid division with 0
+
 
 
 class NoiseDataset(Dataset):

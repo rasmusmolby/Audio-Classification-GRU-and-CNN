@@ -7,10 +7,10 @@ import torch.nn as nn
 '''
 run this module to sanity check sizes at each layer and module
 
-Paper dident specify activation functions in cnn block. So i use leaky
+Paper dident specify activation functions in cnn block.
 
-Using MFCC with a 2:2 CNN and GRU. Read paper to see more setups.
-No softmax cuz entropy has it i guess
+Using MFCC with a 2:2 CNN and GRU.
+No softmax cuz entropy so suck it
 
 
 
@@ -24,8 +24,6 @@ mfcc outputs x lenght feature vector at each timestep.
 
 # Returns weighted sum on each time frame.
 # Basically just self attention module lmao
-# There are other attention modules to use, but the paper did not specifically say which,
-# but this one seemed the most relevant for the task at hand.
 class TemporalAttention(nn.Module):
     def __init__(self, hidden_size):
         super().__init__()
@@ -71,7 +69,7 @@ class CNNGRU(nn.Module):
     def forward(self, x):
         x = self.cnn1(x)
         x = self.cnn2(x)
-        x = x.permute(0,2,1) # GRU expects time first, so we switcha-roo
+        x = x.permute(0,2,1) # GRU expects time first
         x, _ = self.gru1(x)
         x_att, _ = self.attention1(x, x, x)
         x = x + x_att # Residual
@@ -80,12 +78,12 @@ class CNNGRU(nn.Module):
         x = self.lrelu(self.fc1(x))
         x = self.dropout(x)
         x = self.fc2(x)
-        # x = self.softmax(x) # Cuz i use cross entropy so i dont need softmax
+        # x = self.softmax(x) # Cuz i use cross entropy
         return x
 
 
 if __name__ == "__main__":
-    # Sanity check: prints input/output shapes through every named module.
+    # Sanity check — prints input/output shapes through every named module.
     # Input: (batch=1, n_mfcc=39, time_frames=125)
     # 125 frames = 2s audio at 16kHz with hop_length=256
 
@@ -116,5 +114,3 @@ if __name__ == "__main__":
 
     print("-" * 80)
     print(f"\nFinal output shape: {tuple(out.shape)}  (batch, n_classes)")
-
-

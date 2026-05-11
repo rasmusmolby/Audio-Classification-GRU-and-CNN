@@ -22,7 +22,7 @@ from omegaconf import DictConfig, OmegaConf
 from pathlib import Path
 
 from model import CNNGRU
-import data_preprocessing as dp
+import data_preprocessing_cnn_gru as dp
 
 
 # ---------------------------------------------------------------------------
