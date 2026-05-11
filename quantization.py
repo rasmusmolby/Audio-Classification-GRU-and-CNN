@@ -24,7 +24,7 @@ from pathlib import Path
 import hydra
 from omegaconf import DictConfig, OmegaConf
 
-from model import CNNGRU
+from models.model import CNNGRU
 
 
 # FP16
@@ -69,14 +69,14 @@ def main(cfg: DictConfig):
     oc = cfg["output"]
 
     save_dir = Path(oc["save_dir"])
-    best_ckpt = save_dir / "best.pt"
-    int8_path = save_dir / "model_int8.pt"
+    best_ckpt = save_dir / "/home/rasmus/Desktop/Skole/github/semester4_project/gru_cnn/inference_models/gru_cnn.pt"
+    int8_path = save_dir / "gru_cnn_int8.pt"
 
     if not best_ckpt.exists():
         raise FileNotFoundError(f"No checkpoint found at {best_ckpt}. Train a model first.")
 
     model = CNNGRU(
-        n_mfcc=mc["n_mfcc"],
+        input=mc["input"],
         c_cnn=mc["c_cnn"],
         n_classes=mc["n_classes"],
         gru_state=mc["gru_state"],
