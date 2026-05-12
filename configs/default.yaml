@@ -1,41 +1,70 @@
 data:
-  data_dir: "./data"
+  # update: Maybe dont use cache atm, as it MIGHT break the data split with validation womp womp
+  use_cache: false # Run cache_preprocess.py to make cache, else false. Speeds up training ALOT! Only for MFCC atm
+  data_dir: "/ceph/project/DAKI4_gruppe2/Data/RTX_mixed"
   sample_rate: 16000
   duration: 2.0
   random_seed: 42
-  max_files_per_class: 3400
+  max_files: 3500
   label_map: {"disturbing": 0, "transient": 1, "stationary": 2}
-  use_cache: false # Run cache_preprocess.py to make cache, else false. Speeds up training ALOT! Only for MFCC atm
-
-mfcc:
-  n_mfcc: 39
+  normalization: zscore # zscore or pcen
   n_fft: 512
-  hop_length: 256
-  duration: 2.0
+  hop_length: 160
+  f_min: 50
+  f_max: 8000
+
 
 model: # Works but will break the model if changed without thought, so be carefull ya dingus
-  n_mfcc: 39 
+  n_mels: 64 
   c_cnn: 32
   n_classes: 3
   gru_state: 64
   dropout: 0.5 # only one that is safe to change. Dropout at last layer
+  n_cnn: 2
+  n_gru: 2
+
+
+inference:
+  models: all # all, or a list/string with cnn_gru, cnn, cnn_lstm, ast
+  device: cpu # auto, cpu, cuda. CPU for int8 or it crash :(
+  warmup_batches: 2
+  allow_random_weights: false
+  trust_full_model_checkpoints: true
+  checkpoints_dir: "./inference_models"
+  csv: null
+  checkpoints:
+    cnn_gru: /home/rasmus/Desktop/Skole/github/semester4_project/gru_cnn/inference_models/gru_cnn_int8.pt
+    cnn: /home/rasmus/Desktop/Skole/github/semester4_project/gru_cnn/inference_models/best_cnn.pth
+    cnn_lstm: /home/rasmus/Desktop/Skole/github/semester4_project/gru_cnn/inference_models/cnn_lstm_model_best.pth
+    ast: /home/rasmus/Desktop/Skole/github/semester4_project/gru_cnn/inference_models/tiny_ast.pth
+
+
+
 
 training:
   epochs: 100 
-  batch_size: 16
+  batch_size: 32
   learning_rate: 0.0002
   weight_decay: 0.01
   lr_patience: 5  
   lr_factor: 0.5
   early_stop_patience: 15
   num_workers: 4
+  pin_memory: True
+  shuffle: True
   cross_entropy_label_smoothing: 0.1
-  device: "auto"               # auto or cpu
-  remote_tracking: true       # dagsbo bitches
+  device: "auto" # auto or cpu
+  remote_tracking: false # dagsbo bitches. This is an mlflow wrapper
   repo_owner: "rasmusmolby"
   repo_name: "Audio-Classification-GRU-and-CNN"
-  use_checkpoint: true
-  fp16: false                 # mixed precision training
+  use_checkpoint: false
+  fp16: false # mixed precision training
+
+test:
+  batch_size: 32
+  num_workers: 4
+  pin_memory: True
+  shuffle: False
 
 output:
   save_dir: "./outputs"

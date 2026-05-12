@@ -4,12 +4,15 @@ import mlflow
 from pathlib import Path
 from omegaconf import DictConfig, OmegaConf
 import hydra
+import dagshub
+import matplotlib.pyplot as plt
+from sklearn.metrics import classification_report
 
 from scripts.early_stopping import EarlyStopping
 from scripts.checkpoint import save_checkpoint, load_checkpoint
 from quantization import get_amp, training_step
 from model import CNNGRU
-import data_preprocessing_cnn_gru as dp
+import data_preprocessing as dp
 
 
 def get_device(preference="auto"):
@@ -38,9 +41,9 @@ def train(cfg: DictConfig):
     torch.manual_seed(dc["random_seed"])
 
     if tc.get("remote_tracking", False):
-        import dagshub
         dagshub.init(repo_owner=tc["repo_owner"], repo_name=tc["repo_name"], mlflow=True)
         print("Remote tracking enabled (DagsHub)")
+    else:
         print("Local tracking only (set training.remote_tracking=true to push to DagsHub)")
 
     device = get_device(tc["device"])
@@ -49,11 +52,13 @@ def train(cfg: DictConfig):
     train_load, val_load, _ = dp.get_dataloaders(root_dir=dc["data_dir"], cfg=cfg)
 
     model = CNNGRU(
-        n_mfcc=mc["n_mfcc"],
+        n_mels=mc["n_mels"],
         c_cnn=mc["c_cnn"],
         n_classes=mc["n_classes"],
         gru_state=mc["gru_state"],
         dropout=mc["dropout"],
+        n_cnn=mc["n_cnn"],
+        n_gru=mc["n_gru"]
     ).to(device)
 
     optimizer = torch.optim.AdamW(
@@ -101,39 +106,52 @@ def train(cfg: DictConfig):
             "learning_rate": tc["learning_rate"],
             "weight_decay": tc["weight_decay"],
             "random_seed": dc["random_seed"],
+            "data_normalization": dc["normalization"],
+            "n_cnn": mc["n_cnn"],
+            "n_gru": mc["n_gru"],
         })
         mlflow.set_tag("FP16 Quant", tc["fp16"])
 
         for epoch in range(start_epoch, tc["epochs"]):
             # Train loop 
             model.train()
+            train_loss_list = []
             train_loss = 0.0
             for x, labels in train_load:
+                x = x.squeeze(1)  # Remove channel dim for 1dconv input. Patch for mel spec conversion
                 x, labels = x.to(device), labels.to(device)
                 train_loss += training_step(model, x, labels, loss_fn, optimizer, scaler, device, fp16)
             train_loss /= len(train_load)
+            train_loss_list.append(train_loss)
 
             # Validation loop
             model.eval()
+            val_loss_list = []
+            all_preds = []
+            all_labels = []
             val_loss = 0.0
             correct = 0
             total = 0
             with torch.no_grad():
                 for x, labels in val_load:
+                    x = x.squeeze(1)  # Remove channel dim for 1dconv input. Patch for mel spec conversion
                     x, labels = x.to(device), labels.to(device)
                     output = model(x)
                     val_loss += loss_fn(output, labels).item()
                     preds = output.argmax(dim=1)
                     correct += (preds == labels).sum().item()
                     total += labels.size(0)
+                    all_preds.extend(preds.cpu().numpy())
+                    all_labels.extend(labels.cpu().numpy())
             val_loss /= len(val_load)
             val_acc = correct / total
+            val_loss_list.append(val_loss)
 
 
             # Early stop check
             if early_stopper.step(val_loss):
                 print(f"Early stopping at epoch {epoch+1}\n "
-                    f"No improvements for {tc["early_stop_patience"]} epochs")
+                    f"No improvements for {tc['early_stop_patience']} epochs")
                 mlflow.set_tag("early_stopped", f"epoch {epoch+1}")
                 break
 
@@ -159,6 +177,28 @@ def train(cfg: DictConfig):
 
         mlflow.pytorch.log_model(model, "model")
         print(f"Best model saved to {best_ckpt}")
+
+        plt_epochs = range(1, len(train_loss_list) + 1)
+        plt.plot(plt_epochs, train_loss_list, label="Train Loss")
+        plt.plot(plt_epochs, val_loss_list, label="Validation Loss")
+
+        plt.xlabel("Epoch")
+        plt.ylabel("Loss")
+        plt.title("Training and Validation Loss")
+        plt.legend()
+
+        plt.savefig("2to2_loss_plot.png", dpi=300, bbox_inches="tight")
+
+        mlflow.log_figure(plt.gcf(), "loss_plot.png")
+
+        plt.close()        
+
+        report = classification_report(
+            all_labels, 
+            all_preds,
+            target_names=list(dc["label_map"].keys()),
+        )
+        print(report)
 
 
 if __name__ == "__main__":
