@@ -7,6 +7,7 @@ import hydra
 import dagshub
 import matplotlib.pyplot as plt
 from sklearn.metrics import classification_report
+import time 
 
 from scripts.early_stopping import EarlyStopping
 from scripts.checkpoint import save_checkpoint, load_checkpoint
@@ -112,10 +113,16 @@ def train(cfg: DictConfig):
         })
         mlflow.set_tag("FP16 Quant", tc["fp16"])
 
+        train_loss_list = []
+        val_loss_list = []
+        all_preds = []
+        all_labels = []
+
+        start_time = time.time()
+
         for epoch in range(start_epoch, tc["epochs"]):
             # Train loop 
             model.train()
-            train_loss_list = []
             train_loss = 0.0
             for x, labels in train_load:
                 x = x.squeeze(1)  # Remove channel dim for 1dconv input. Patch for mel spec conversion
@@ -126,9 +133,6 @@ def train(cfg: DictConfig):
 
             # Validation loop
             model.eval()
-            val_loss_list = []
-            all_preds = []
-            all_labels = []
             val_loss = 0.0
             correct = 0
             total = 0
@@ -172,8 +176,14 @@ def train(cfg: DictConfig):
             save_checkpoint(latest_ckpt, epoch, model, optimizer, scheduler, best_val_loss)
             if val_loss < best_val_loss:
                 best_val_loss = val_loss
+                torch.save(model.state_dict(), '2to2_cnn_gru.pth')
                 save_checkpoint(best_ckpt, epoch, model, optimizer, scheduler, best_val_loss)
                 print(f" New best loss model saved (val_loss {best_val_loss:.4f})")
+
+        end_time = time.time()
+        training_duration = end_time - start_time
+        mlflow.log_metric("training_duration_seconds", training_duration)
+        print(f"Training completed in {training_duration:.2f} seconds", flush=True)
 
         mlflow.pytorch.log_model(model, "model")
         print(f"Best model saved to {best_ckpt}")
@@ -189,7 +199,7 @@ def train(cfg: DictConfig):
 
         plt.savefig("2to2_loss_plot.png", dpi=300, bbox_inches="tight")
 
-        mlflow.log_figure(plt.gcf(), "loss_plot.png")
+        mlflow.log_figure(plt.gcf(), "2to2_loss_plot.png")
 
         plt.close()        
 
