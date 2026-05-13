@@ -1,0 +1,16 @@
+Optimizer: AdamW
+
+Scheduler: ReduceLROnPlateau
+
+Early Stopping: Yes
+
+
+Parameters:
+- epochs: 100 
+- batch_size: 32
+- learning_rate: 0.0002
+- weight_decay: 0.01
+- lr_patience: 5  
+- lr_factor: 0.5
+- early_stop_patience: 15
+- normalization: zscore

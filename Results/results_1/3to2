@@ -1,0 +1,13 @@
+Early stopping at epoch 22
+ No improvements for 15 epochs
+Training completed in 86.29 seconds
+Best model saved to outputs/best.pt
+              precision    recall  f1-score   support
+
+  disturbing       0.91      0.87      0.89     11198
+   transient       0.78      0.77      0.78     11770
+  stationary       0.75      0.79      0.77     11660
+
+    accuracy                           0.81     34628
+   macro avg       0.81      0.81      0.81     34628
+weighted avg       0.81      0.81      0.81     34628

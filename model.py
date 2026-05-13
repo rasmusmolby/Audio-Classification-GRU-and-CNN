@@ -2,31 +2,6 @@ import torch
 import torch.nn as nn
 
 
-'''
-Configurable CNN-GRU model.
-
-Supports any CNN:GRU ratio. Tested configs from the paper:
-    - 5:1  (n_cnn=5, n_gru=1)
-    - 4:1  (n_cnn=4, n_gru=1)
-    - 3:2  (n_cnn=3, n_gru=2)
-    - 2:2  (n_cnn=2, n_gru=2)  ← original
-
-Input:  (batch, n_mfcc, time)
-Output: (batch, n_classes)  — raw logits, no softmax (use CrossEntropyLoss)
-
-CNN block channel schedule:
-    Block 1 : n_mfcc  → c_cnn
-    Block 2 : c_cnn   → c_cnn*2
-    Block 3+: c_cnn*2 → c_cnn*2   (channel count stabilises after block 2)
-
-Each CNN block halves the time dimension via MaxPool1d(2).
-GRU blocks all share hidden_size=gru_state.
-Multi-head attention + residual sits between GRU block 1 and 2 (if n_gru >= 2).
-Temporal attention collapses the time axis before the FC head.
-'''
-
-
-
 # Attention module
 # Exactly the same as the original, just with more comments :)
 class TemporalAttention(nn.Module):
