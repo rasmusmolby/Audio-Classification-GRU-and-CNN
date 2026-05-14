@@ -1,7 +1,7 @@
 data:
   # update: Maybe dont use cache atm, as it MIGHT break the data split with validation womp womp
   use_cache: false # Run cache_preprocess.py to make cache, else false. Speeds up training ALOT! Only for MFCC atm
-  data_dir: "/ceph/project/DAKI4_gruppe2/Data/RTX_mixed"
+  data_dir: "RTX_mixed"
   sample_rate: 16000
   duration: 2.0
   random_seed: 42
@@ -49,11 +49,11 @@ training:
   lr_patience: 5  
   lr_factor: 0.5
   early_stop_patience: 15
-  num_workers: 4
-  pin_memory: True
+  num_workers: 0
+  pin_memory: False
   shuffle: True
   cross_entropy_label_smoothing: 0.1
-  device: "auto" # auto or cpu
+  device: "cpu" # auto or cpu
   remote_tracking: false # dagsbo bitches. This is an mlflow wrapper
   repo_owner: "rasmusmolby"
   repo_name: "Audio-Classification-GRU-and-CNN"
@@ -62,8 +62,8 @@ training:
 
 test:
   batch_size: 32
-  num_workers: 4
-  pin_memory: True
+  num_workers: 0
+  pin_memory: False
   shuffle: False
 
 output:

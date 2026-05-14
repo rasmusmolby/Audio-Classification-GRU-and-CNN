@@ -173,11 +173,11 @@ def train(cfg: DictConfig):
             }, step=epoch)
             print(f"Epoch {epoch+1:03d}  train_loss {train_loss:.4f}  val_loss {val_loss:.4f}  val_acc: {val_acc:.4f}  current_lr: {current_lr:.6f}")
 
-            save_checkpoint(latest_ckpt, epoch, model, optimizer, scheduler, best_val_loss)
+            #save_checkpoint(latest_ckpt, epoch, model, optimizer, scheduler, best_val_loss)
             if val_loss < best_val_loss:
                 best_val_loss = val_loss
                 torch.save(model.state_dict(), '2to2_cnn_gru.pth')
-                save_checkpoint(best_ckpt, epoch, model, optimizer, scheduler, best_val_loss)
+                #save_checkpoint(best_ckpt, epoch, model, optimizer, scheduler, best_val_loss)
                 print(f" New best loss model saved (val_loss {best_val_loss:.4f})")
 
         end_time = time.time()

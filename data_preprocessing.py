@@ -1,5 +1,4 @@
 import torch
-import torchaudio
 import torchaudio.transforms as T
 from pathlib import Path
 from torch.utils.data import Dataset, DataLoader, random_split

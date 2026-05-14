@@ -1,0 +1,51 @@
+FP32:
+- Using CPU
+- Inference completed in 20.70 seconds
+- Weights: 387 KB
+              precision    recall  f1-score   support
+
+  disturbing       0.94      0.89      0.91       511
+   transient       0.78      0.83      0.81       548
+  stationary       0.80      0.79      0.79       517
+
+    accuracy                           0.83      1576
+   macro avg       0.84      0.83      0.84      1576
+weighted avg       0.84      0.83      0.83      1576
+
+
+
+
+
+
+FP16:
+- Using CPU
+- Inference completed in 20.42 seconds
+- Weights: 199 KB
+              precision    recall  f1-score   support
+
+  disturbing       0.94      0.89      0.91       511
+   transient       0.78      0.83      0.81       548
+  stationary       0.80      0.79      0.79       517
+
+    accuracy                           0.83      1576
+   macro avg       0.84      0.83      0.84      1576
+weighted avg       0.84      0.83      0.83      1576
+
+
+
+
+
+
+INT8:
+- Using CPU
+- Inference completed in 4.94 seconds
+- Weights: 221 KB
+              precision    recall  f1-score   support
+
+  disturbing       0.94      0.89      0.91       511
+   transient       0.78      0.83      0.80       548
+  stationary       0.79      0.79      0.79       517
+
+    accuracy                           0.83      1576
+   macro avg       0.84      0.83      0.84      1576
+weighted avg       0.84      0.83      0.83      1576
