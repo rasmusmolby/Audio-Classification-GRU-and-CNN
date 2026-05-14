@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import numpy as np
 
 
 # Attention module
@@ -107,6 +108,41 @@ class CNNGRU(nn.Module):
         x = self.dropout(x)
         x = self.fc2(x)
         return x
+
+
+# ---------------------------------------------------------------------------
+# Embedding extraction for t-SNE / visualization
+# ---------------------------------------------------------------------------
+
+def extract_embeddings(model, dataloader, device="cpu"):
+    model.eval()
+    embeddings = []
+    labels_all = []
+
+    with torch.no_grad():
+        for x_batch, y_batch in dataloader:
+            x_batch = x_batch.to(device)
+
+            x = x_batch.squeeze(1)
+
+            for block in model.cnn_blocks:
+                x = block(x)
+
+            x = x.permute(0, 2, 1)
+
+            for i, gru in enumerate(model.gru_blocks):
+                x, _ = gru(x)
+                if i == 0 and model.mha is not None:
+                    x_att, _ = model.mha(x, x, x)
+                    x = x + x_att
+
+            x = model.temporal_attn(x)
+            x = model.lrelu(model.fc1(x))   # 128-dim embedding
+
+            embeddings.append(x.cpu().numpy())
+            labels_all.append(y_batch.numpy())
+
+    return np.concatenate(embeddings), np.concatenate(labels_all)
 
 
 # ---------------------------------------------------------------------------
