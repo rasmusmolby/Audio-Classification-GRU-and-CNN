@@ -32,7 +32,7 @@ class TemporalAttention(nn.Module):
         self.attention = nn.Linear(hidden_size, 1)
 
     def forward(self, x):
-        score = self.attention(x)
+        score = torch.tanh(self.attention(x))
         weights = torch.softmax(score, dim=1)
         return (weights * x).sum(dim=1)
 
