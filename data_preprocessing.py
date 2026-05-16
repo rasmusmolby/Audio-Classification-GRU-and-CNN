@@ -5,6 +5,7 @@ from torch.utils.data import Dataset, DataLoader, random_split
 import soundfile as sf
 import random
 import librosa
+import yaml
 
 def load_and_resample(path, cfg):
 # Load and resample  to target sample rate. Returns mono waveform
@@ -110,11 +111,6 @@ def get_all_samples(root_dir, cfg):
 
 
 class NoiseDataset(Dataset):
-    '''
-    This is the NEW UPDATED VERSION of CARL EMILS SUPER COOL PRE PROCESSING SCRIPT!
-    NO VIRUS!
-
-    '''
     def __init__(self, samples, cfg, mode="train"):
         self.samples = samples
         self.mode = mode
@@ -189,7 +185,6 @@ def get_dataloaders(root_dir, cfg):
     return train_loader, val_loader, test_loader
 
 if __name__ == "__main__":
-    import yaml
     with open("configs/default.yaml") as f:
         cfg = yaml.safe_load(f)
 
