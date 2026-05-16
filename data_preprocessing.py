@@ -124,16 +124,24 @@ class NoiseDataset(Dataset):
         path, label = self.samples[idx]
         try:
             waveform = load_and_resample(path, self.cfg)
+            waveform = pad_or_trim(waveform, self.cfg)   # ← trim FIRST to fixed length
 
             if self.mode == "train":
-                waveform = augment_time_stretch(waveform, rate=1.5)   # changes length → trim after
-                waveform = augment_pitch_shift(waveform, self.cfg, n_steps=2)
+                # Apply each augmentation randomly, not always
+                if random.random() < 0.5:
+                    rate = random.uniform(0.9, 1.1)      # ← subtle range, not 1.5
+                    waveform = augment_time_stretch(waveform, rate=rate)
+                    waveform = pad_or_trim(waveform, self.cfg)  # re-trim after stretch
 
-            waveform = pad_or_trim(waveform, self.cfg)                # now safe to trim/pad
+                if random.random() < 0.5:
+                    n_steps = random.choice([-2, -1, 1, 2])
+                    waveform = augment_pitch_shift(waveform, self.cfg, n_steps=n_steps)
 
-            if self.mode == "train":
-                waveform = augment_volume(waveform)
-                waveform = augment_additive_noise(waveform)           # after pad so shape is fixed
+                if random.random() < 0.5:
+                    waveform = augment_volume(waveform)
+
+                if random.random() < 0.3:
+                    waveform = augment_additive_noise(waveform)
 
             spec = self.mel_transform(waveform)
 
