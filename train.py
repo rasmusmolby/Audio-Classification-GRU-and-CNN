@@ -176,7 +176,7 @@ def train(cfg: DictConfig):
             #save_checkpoint(latest_ckpt, epoch, model, optimizer, scheduler, best_val_loss)
             if val_loss < best_val_loss:
                 best_val_loss = val_loss
-                torch.save(model.state_dict(), '2to2_cnn_gru.pth')
+                torch.save(model.state_dict(), '2to2_no_mha_cnn_gru.pth')
                 #save_checkpoint(best_ckpt, epoch, model, optimizer, scheduler, best_val_loss)
                 print(f" New best loss model saved (val_loss {best_val_loss:.4f})")
 
@@ -197,9 +197,9 @@ def train(cfg: DictConfig):
         plt.title("Training and Validation Loss")
         plt.legend()
 
-        plt.savefig("2to2_loss_plot.png", dpi=300, bbox_inches="tight")
+        plt.savefig("2to2_no_mha_loss_plot.png", dpi=300, bbox_inches="tight")
 
-        mlflow.log_figure(plt.gcf(), "2to2_loss_plot.png")
+        mlflow.log_figure(plt.gcf(), "2to2_no_mha_loss_plot.png")
 
         plt.close()        
 

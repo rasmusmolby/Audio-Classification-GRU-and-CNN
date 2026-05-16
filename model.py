@@ -13,7 +13,8 @@ class TemporalAttention(nn.Module):
 
     def forward(self, x):
         # x: (batch, time, hidden)
-        score = self.attention(x)               # (batch, time, 1)
+        score = torch.tanh(self.attention(x))   # added tanh to introduce non-linearity 
+                                                # (batch, time, 1)
         weights = torch.softmax(score, dim=1)   # softmax over time
         return (weights * x).sum(dim=1)         # (batch, hidden)
 
@@ -68,9 +69,9 @@ class CNNGRU(nn.Module):
         self.gru_blocks = nn.ModuleList(gru_blocks)
 
         # Multi-head attention placed between GRU-1 and GRU-2 (only when n_gru >= 2)
-        self.mha = nn.MultiheadAttention(
-            embed_dim=gru_state, num_heads=4, batch_first=True
-        ) if n_gru >= 2 else None
+        # self.mha = nn.MultiheadAttention(
+        #     embed_dim=gru_state, num_heads=4, batch_first=True
+        # ) if n_gru >= 2 else None
 
         # Temporal attention collapses the time axis after the final GRU
         self.temporal_attn = TemporalAttention(hidden_size=gru_state)
@@ -96,9 +97,9 @@ class CNNGRU(nn.Module):
         for i, gru in enumerate(self.gru_blocks):
             x, _ = gru(x)
             # Insert multi-head attention + residual after the FIRST GRU block
-            if i == 0 and self.mha is not None:
-                x_att, _ = self.mha(x, x, x)
-                x = x + x_att   # residual
+            # if i == 0 and self.mha is not None:
+            #     x_att, _ = self.mha(x, x, x)
+            #     x = x + x_att   # residual
 
         # Collapse time axis
         x = self.temporal_attn(x)
@@ -132,9 +133,9 @@ def extract_embeddings(model, dataloader, device="cpu"):
 
             for i, gru in enumerate(model.gru_blocks):
                 x, _ = gru(x)
-                if i == 0 and model.mha is not None:
-                    x_att, _ = model.mha(x, x, x)
-                    x = x + x_att
+                # if i == 0 and model.mha is not None:
+                #     x_att, _ = model.mha(x, x, x)
+                #     x = x + x_att
 
             x = model.temporal_attn(x)
             x = model.lrelu(model.fc1(x))   # 128-dim embedding

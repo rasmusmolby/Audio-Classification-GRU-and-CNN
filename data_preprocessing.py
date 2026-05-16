@@ -50,6 +50,31 @@ def augment_volume(waveform):
     return waveform * gain
 
 
+def augment_time_stretch(waveform, rate=1.5):
+    """Time-stretch waveform by `rate` using librosa (CPU, numpy bridge)."""
+    wav_np = waveform.squeeze(0).numpy()          # (samples,)
+    stretched = librosa.effects.time_stretch(wav_np, rate=rate)
+    return torch.from_numpy(stretched).unsqueeze(0)  # (1, samples)
+
+
+def augment_pitch_shift(waveform, cfg, n_steps=2):
+    """Shift pitch by `n_steps` semitones."""
+    wav_np = waveform.squeeze(0).numpy()
+    shifted = librosa.effects.pitch_shift(
+        wav_np,
+        sr=cfg["data"]["sample_rate"],
+        n_steps=n_steps
+    )
+    return torch.from_numpy(shifted).unsqueeze(0)  # (1, samples)
+
+
+def augment_additive_noise(waveform):
+    """Add zero-mean Gaussian noise; amplitude ~ Uniform(0.005, 0.008)."""
+    amplitude = random.uniform(0.005, 0.008)
+    noise = torch.randn_like(waveform) * amplitude
+    return waveform + noise
+
+
 def pcen_transform(spec, cfg):
     spec_np = spec.squeeze(0).numpy()  # (64, 201)
     pcen = librosa.pcen(spec_np, 
@@ -103,15 +128,25 @@ class NoiseDataset(Dataset):
         path, label = self.samples[idx]
         try:
             waveform = load_and_resample(path, self.cfg)
-            waveform = pad_or_trim(waveform, self.cfg)
+
+            if self.mode == "train":
+                waveform = augment_time_stretch(waveform, rate=1.5)   # changes length → trim after
+                waveform = augment_pitch_shift(waveform, self.cfg, n_steps=2)
+
+            waveform = pad_or_trim(waveform, self.cfg)                # now safe to trim/pad
+
             if self.mode == "train":
                 waveform = augment_volume(waveform)
+                waveform = augment_additive_noise(waveform)           # after pad so shape is fixed
+
             spec = self.mel_transform(waveform)
+
             if self.cfg["data"]["normalization"] == "zscore":
                 spec = mel_to_logmel(spec)
                 spec = normalize(spec)
             elif self.cfg["data"]["normalization"] == "pcen":
                 spec = pcen_transform(spec, self.cfg)
+
             return spec, label
         except Exception:
             return self.__getitem__((idx + 1) % len(self.samples))
